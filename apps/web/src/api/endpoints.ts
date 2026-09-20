@@ -11,6 +11,7 @@ import type {
   CreateStepInput,
   CreateVagueItemInput,
   CreateVerificationInput,
+  ElderOverviewDto,
   IngredientDto,
   KitchenReferenceDto,
   NotificationDto,
@@ -262,4 +263,10 @@ export const notificationApi = {
     unwrap<NotificationDto[]>(api.get('/notifications', { params: { unread: params?.unread } })),
   markRead: (input: { ids?: string[]; all?: boolean }) =>
     unwrap<{ updated: number }>(api.post('/notifications/read', input)),
+};
+
+/* ---------------- 长辈极简端 ---------------- */
+
+export const elderApi = {
+  overview: () => unwrap<ElderOverviewDto>(api.get('/elder/overview')),
 };

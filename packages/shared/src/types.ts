@@ -282,6 +282,60 @@ export interface KitchenReferenceDto {
   createdAt: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* 长辈极简端（/elder）
+ *
+ * 界面上只有"按住说话"一个动作，其余整理工作由整理者代劳。
+ * 以下类型是极简端首页一次拉全的聚合视图，刻意与整理端的 DTO 分开：
+ * 极简端字段只增不减，改它就是在改长辈看到的东西。
+ * ------------------------------------------------------------------ */
+
+export interface ElderOverviewDto {
+  /** 我加入的家庭空间；通常只有一个 */
+  workspaces: {
+    id: string;
+    name: string;
+    role: WorkspaceRole;
+  }[];
+  /** 家人等着我回答的问题（status=asked，指派给我的排最前），跨空间汇总 */
+  questions: ElderQuestionDto[];
+  /** 每个空间里可以直接按住录新口述的菜 */
+  recipes: ElderRecipeGroupDto[];
+}
+
+export interface ElderQuestionDto {
+  itemId: string;
+  recipeId: string;
+  recipeTitle: string;
+  workspaceId: string;
+  workspaceName: string;
+  /** 整理者问出口的话：「火苗大概多大？」 */
+  question: string;
+  /** 长辈当时那句模糊原话：「中火炒到冒泡」 */
+  rawPhrase: string;
+  /** true = 专门指派给我回答；false = 家人公开问、谁方便谁答 */
+  assignedToMe: boolean;
+  /** 提问那句原声（如果整理者框选了片段），长辈可"再听一遍" */
+  clip: AudioClipDto | null;
+  clipAudio: AudioAttachmentDto | null;
+}
+
+export interface ElderRecipeGroupDto {
+  workspaceId: string;
+  workspaceName: string;
+  recipes: ElderRecipeDto[];
+}
+
+export interface ElderRecipeDto {
+  id: string;
+  title: string;
+  dishCategory: string | null;
+  /** 已经存下来的语音段数（不含软删除），给长辈一个"我说过了"的安心感 */
+  audioCount: number;
+  /** 最近三段语音，供"再听听自己说了啥" */
+  recentAudio: AudioAttachmentDto[];
+}
+
 export interface RecipeVersionDto {
   id: string;
   recipeId: string;

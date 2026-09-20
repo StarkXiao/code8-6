@@ -29,17 +29,17 @@ export function useRealtime(): void {
     };
 
     socket.on('vague_item:new', () => {
-      invalidate([['vague-items'], ['recipe'], ['recipes'], ['vague-summary']]);
+      invalidate([['vague-items'], ['recipe'], ['recipes'], ['vague-summary'], ['elder-overview']]);
     });
     socket.on('vague_item:updated', () => {
-      invalidate([['vague-items'], ['vague-item'], ['recipe'], ['recipes'], ['vague-summary']]);
+      invalidate([['vague-items'], ['vague-item'], ['recipe'], ['recipes'], ['vague-summary'], ['elder-overview']]);
     });
     socket.on('comment:created', () => invalidate([['comments']]));
     socket.on('version:published', () => invalidate([['versions'], ['recipe'], ['recipes']]));
     socket.on('verification:submitted', () => {
       invalidate([['verifications'], ['vague-items'], ['recipe'], ['recipes']]);
     });
-    socket.on('audio:created', () => invalidate([['audio']]));
+    socket.on('audio:created', () => invalidate([['audio'], ['elder-overview']]));
     socket.on('notification:new', () => invalidate([['notifications']]));
 
     return () => {

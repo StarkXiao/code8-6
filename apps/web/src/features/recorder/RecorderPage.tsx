@@ -139,6 +139,18 @@ export function RecorderPage() {
     onError: (error) => message.error(errorMessage(error)),
   });
 
+  // 长辈极简端录进来的语音 transcriptStatus=none，整理者从下方列表点"整理这段"
+  // 即把该音频载入右侧转写/标注面板，替长辈把听到的话打下来。
+  const loadExistingAudio = (item: AudioAttachmentDto) => {
+    revokeObjectUrl();
+    setRecorded(null);
+    setSelection(null);
+    setClip(null);
+    setCreatedCount(0);
+    setAudio(item);
+    setTranscript(item.transcript ?? '');
+  };
+
   const createItemMutation = useMutation({
     mutationFn: (values: { category: VagueCategory; rawPhrase: string; assigneeId?: string }) =>
       vagueItemApi.create(recipeId!, {
@@ -347,6 +359,9 @@ export function RecorderPage() {
                     >
                       播放
                     </Button>,
+                    <Button key="edit" type="link" onClick={() => loadExistingAudio(item)}>
+                      {item.id === audio?.id ? '正在整理' : '整理这段'}
+                    </Button>,
                   ]}
                 >
                   <List.Item.Meta
@@ -354,7 +369,9 @@ export function RecorderPage() {
                     description={
                       item.transcriptStatus === 'done'
                         ? (item.transcript ?? '').slice(0, 40) || '已转写（内容为空）'
-                        : '待转写'
+                        : item.transcriptStatus === 'none'
+                          ? '待转写 —— 长辈刚录的，点"整理这段"把话打下来'
+                          : '待转写'
                     }
                   />
                 </List.Item>
@@ -364,7 +381,23 @@ export function RecorderPage() {
 
           {/* 右：转写与标记 */}
           <div className="froa-detail">
-            <h3 className="froa-card-title">转写与标注</h3>
+            <div className="froa-row" style={{ justifyContent: 'space-between' }}>
+              <h3 className="froa-card-title" style={{ margin: 0 }}>
+                转写与标注
+              </h3>
+              <Button
+                onClick={() => {
+                  revokeObjectUrl();
+                  setRecorded(null);
+                  setAudio(null);
+                  setTranscript('');
+                  setSelection(null);
+                  setClip(null);
+                }}
+              >
+                再录一段新的
+              </Button>
+            </div>
             <Typography.Paragraph type="secondary">
               把长辈说的话打在这里（或核对自动转写结果），然后找出"说不清"的地方标出来。
             </Typography.Paragraph>

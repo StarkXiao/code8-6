@@ -58,6 +58,10 @@ export function LoginPage() {
         <div style={{ marginTop: 16, textAlign: 'center' }}>
           还没有账号？<Link to="/register">注册一个</Link>
         </div>
+
+        <div style={{ marginTop: 12, textAlign: 'center' }}>
+          <Link to="/elder">给家里长辈用的极简说话版 →</Link>
+        </div>
       </div>
     </div>
   );

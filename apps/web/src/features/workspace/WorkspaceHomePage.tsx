@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { App as AntApp, Button, Empty, Form, Input, Modal, Spin, Typography } from 'antd';
+import { App as AntApp, Button, Empty, Form, Input, Modal, Space, Spin, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RecipeDto } from '@froa/shared';
@@ -62,14 +62,19 @@ export function WorkspaceHomePage() {
             {workspace.data ? workspace.data.role : '—'}
           </div>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          disabled={isViewer}
-          onClick={() => setCreating(true)}
-        >
-          新建食谱
-        </Button>
+        <Space wrap>
+          <Button size="large" onClick={() => navigate('/elder')}>
+            长辈说话版
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={isViewer}
+            onClick={() => setCreating(true)}
+          >
+            新建食谱
+          </Button>
+        </Space>
       </div>
 
       {list.length === 0 ? (

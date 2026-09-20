@@ -20,6 +20,8 @@ import { DiffPage } from './features/versions/DiffPage';
 import { VerifyPage } from './features/verification/VerifyPage';
 import { NotificationsPage } from './features/notification/NotificationsPage';
 import { ActivityPage } from './features/activity/ActivityPage';
+import { ElderLoginPage } from './features/elder/ElderLoginPage';
+import { ElderHomePage } from './features/elder/ElderHomePage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -35,6 +37,16 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  return <>{children}</>;
+}
+
+/** 长辈极简端的鉴权外壳：未登录统一去 /elder/login，不混进整理端 */
+function RequireElderAuth({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  const loading = useAuthStore((s) => s.loading);
+
+  if (loading) return <div className="froa-elder-loading">正在打开…</div>;
+  if (!user) return <Navigate to="/elder/login" replace />;
   return <>{children}</>;
 }
 
@@ -54,6 +66,17 @@ export function App() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
+
+        {/* 长辈极简端：独立外壳，不带整理端的导航与任何编辑入口 */}
+        <Route path="/elder/login" element={<ElderLoginPage />} />
+        <Route
+          path="/elder"
+          element={
+            <RequireElderAuth>
+              <ElderHomePage />
+            </RequireElderAuth>
+          }
+        />
 
         <Route
           path="/join/:inviteCode"

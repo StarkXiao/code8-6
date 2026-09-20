@@ -472,3 +472,383 @@ a {
 body.has-player .froa-main {
   padding-bottom: 6rem;
 }
+
+/* ------------------------------------------------------------------
+   长辈极简端（/elder）
+   设计原则：一屏只有一个动作；超大字、高对比、按钮大到单手按不错；
+   不使用根字号缩放档位 —— 这里直接就是最大档。
+   ------------------------------------------------------------------ */
+
+.froa-elder {
+  min-height: 100vh;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  font-size: 1.25rem;
+  line-height: 1.7;
+}
+
+.froa-elder-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.froa-elder-greeting {
+  font-size: 2rem;
+  margin: 0;
+  color: var(--froa-primary);
+}
+
+.froa-elder-date-tip {
+  margin: 0.4rem 0 0;
+  color: var(--froa-text-soft);
+  font-size: 1.15rem;
+}
+
+.froa-elder-logout {
+  flex: none;
+  border: 2px solid var(--froa-border);
+  background: var(--froa-surface);
+  color: var(--froa-text-soft);
+  font-size: 1.1rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.froa-elder-section {
+  margin-bottom: 2.5rem;
+}
+
+.froa-elder-section-title {
+  font-size: 1.55rem;
+  margin: 0 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.froa-elder-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--froa-heat);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.froa-elder-group {
+  margin-bottom: 1.5rem;
+}
+
+.froa-elder-group-title {
+  font-size: 1.2rem;
+  color: var(--froa-text-soft);
+  margin: 0 0 0.6rem;
+}
+
+.froa-elder-card {
+  background: var(--froa-surface);
+  border: 2px solid var(--froa-border);
+  border-radius: 20px;
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+}
+
+.froa-elder-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.froa-elder-dishname {
+  font-size: 1.65rem;
+  font-weight: 700;
+}
+
+.froa-elder-badge {
+  background: var(--froa-primary-soft);
+  color: var(--froa-primary);
+  border-radius: 999px;
+  padding: 0.2rem 0.9rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.froa-elder-audio-count {
+  color: var(--froa-text-soft);
+  font-size: 1.05rem;
+}
+
+.froa-elder-audio-count strong {
+  color: var(--froa-amount);
+  font-size: 1.3rem;
+}
+
+.froa-elder-question-text {
+  font-size: 1.45rem;
+  margin: 0 0 0.4rem;
+}
+
+.froa-elder-quote {
+  color: var(--froa-text-soft);
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+
+.froa-elder-replay,
+.froa-elder-past-btn {
+  border: 2px solid var(--froa-primary);
+  background: var(--froa-surface);
+  color: var(--froa-primary);
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 0.7rem 1.3rem;
+  border-radius: 999px;
+  cursor: pointer;
+  margin: 0 0.6rem 0.6rem 0;
+}
+
+.froa-elder-past {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.froa-elder-past-label {
+  color: var(--froa-text-soft);
+  font-size: 1.05rem;
+}
+
+.froa-elder-past-btn {
+  border-color: var(--froa-border);
+  color: var(--froa-text);
+  font-size: 1.05rem;
+  padding: 0.5rem 1rem;
+}
+
+.froa-elder-thanks,
+.froa-elder-saved {
+  background: #e8f5ee;
+  border: 2px solid var(--froa-amount);
+  color: #1f5c40;
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.froa-elder-error {
+  background: #fdecea;
+  border: 2px solid #c62828;
+  color: #8a1c1c;
+  border-radius: 14px;
+  padding: 0.9rem 1.1rem;
+  font-size: 1.15rem;
+  margin-top: 0.8rem;
+}
+
+.froa-elder-empty {
+  text-align: center;
+  color: var(--froa-text-soft);
+  font-size: 1.3rem;
+}
+
+.froa-elder-loading {
+  text-align: center;
+  font-size: 1.5rem;
+  color: var(--froa-text-soft);
+  padding: 4rem 0;
+}
+
+.froa-elder-footer {
+  text-align: center;
+  color: var(--froa-text-soft);
+  font-size: 1.05rem;
+  margin-top: 2rem;
+}
+
+/* ---------------- 按住说话按钮 ---------------- */
+
+.froa-hold {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.froa-hold-btn {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: #fff;
+  background: var(--froa-primary);
+  box-shadow: 0 10px 24px rgba(140, 74, 36, 0.3);
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.froa-hold-btn.is-circle {
+  width: 15rem;
+  height: 15rem;
+  border-radius: 50%;
+}
+
+.froa-hold-btn.is-bar {
+  width: 100%;
+  min-height: 9rem;
+  border-radius: 24px;
+}
+
+.froa-hold-btn.is-active {
+  background: #c62828;
+  box-shadow: 0 0 0 6px rgba(198, 40, 40, 0.18), 0 10px 24px rgba(198, 40, 40, 0.35);
+  animation: froa-elder-pulse 1.2s ease-in-out infinite;
+}
+
+.froa-hold-btn:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+@keyframes froa-elder-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+.froa-hold-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.froa-hold-main {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.froa-hold-btn.is-circle .froa-hold-main {
+  font-size: 2.1rem;
+}
+
+.froa-hold-sub {
+  font-size: 1.05rem;
+  opacity: 0.85;
+}
+
+.froa-hold-timer {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.froa-hold-hint {
+  font-size: 1.2rem;
+  color: var(--froa-text-soft);
+  text-align: center;
+}
+
+/* ---------------- 长辈端登录页 ---------------- */
+
+.froa-elder-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.froa-elder-login-card {
+  width: 100%;
+  max-width: 30rem;
+  background: var(--froa-surface);
+  border: 2px solid var(--froa-border);
+  border-radius: 24px;
+  padding: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.froa-elder-title {
+  font-size: 2.2rem;
+  margin: 0;
+  text-align: center;
+  color: var(--froa-primary);
+}
+
+.froa-elder-subtitle {
+  margin: 0;
+  text-align: center;
+  color: var(--froa-text-soft);
+  font-size: 1.2rem;
+}
+
+.froa-elder-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.froa-elder-field input {
+  font-size: 1.3rem;
+  padding: 0.9rem 1rem;
+  border: 2px solid var(--froa-border);
+  border-radius: 14px;
+  font-family: inherit;
+}
+
+.froa-elder-submit {
+  border: none;
+  background: var(--froa-primary);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 1rem;
+  border-radius: 16px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.froa-elder-textlink {
+  border: none;
+  background: none;
+  color: var(--froa-text-soft);
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.4rem;
+}
