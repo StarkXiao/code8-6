@@ -131,23 +131,29 @@ export async function assertVagueItemRole(
 export async function assertAudioRole(userId: string, audioId: string, required: WorkspaceRole) {
   const audio = await prisma.audioAttachment.findUnique({
     where: { id: audioId },
-    select: { id: true, recipeId: true, ownerId: true, deletedAt: true },
+    select: { id: true, recipeId: true, workspaceId: true, ownerId: true, deletedAt: true },
   });
   // 注意：这里**不**因为 deletedAt 而拒绝。
   // 软删除的语义是"从语音库里隐藏"，不是"销毁证据" ——
   // 已经挂在结论上的原声必须仍然能回放，否则"结论永远可追溯到原声"就是空话。
   if (!audio) throw new ApiError('AUDIO_NOT_FOUND');
-  const access = await assertRecipeRole(userId, audio.recipeId, required);
-  return { ...access, ownerId: audio.ownerId, deletedAt: audio.deletedAt };
+  // 收件箱里的语音（recipeId 为 null）还没有食谱，按家庭空间成员身份鉴权
+  const access = audio.recipeId
+    ? await assertRecipeRole(userId, audio.recipeId, required)
+    : await assertWorkspaceRole(userId, audio.workspaceId, required);
+  return { ...access, recipeId: audio.recipeId, ownerId: audio.ownerId, deletedAt: audio.deletedAt };
 }
 
 export async function assertClipRole(userId: string, clipId: string, required: WorkspaceRole) {
   const clip = await prisma.audioClip.findUnique({
     where: { id: clipId },
-    select: { id: true, audio: { select: { recipeId: true } } },
+    select: { id: true, audio: { select: { recipeId: true, workspaceId: true } } },
   });
   if (!clip) throw notFound('音频片段');
-  const access = await assertRecipeRole(userId, clip.audio.recipeId, required);
+  // 与 assertAudioRole 同理：收件箱语音上的片段按空间鉴权
+  const access = clip.audio.recipeId
+    ? await assertRecipeRole(userId, clip.audio.recipeId, required)
+    : await assertWorkspaceRole(userId, clip.audio.workspaceId, required);
   return { ...access, clipId: clip.id };
 }
 

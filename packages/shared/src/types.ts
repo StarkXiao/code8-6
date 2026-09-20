@@ -163,7 +163,8 @@ export interface IngredientDto {
 export interface AudioAttachmentDto {
   id: string;
   workspaceId: string;
-  recipeId: string;
+  /** 为 null 表示还在"语音收件箱"里，等待整理者归到具体食谱 */
+  recipeId: string | null;
   ownerId: string;
   kind: AudioKind;
   mimeType: string;

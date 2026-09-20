@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   App as AntApp,
   Button,
@@ -46,6 +46,7 @@ const KIND_LABELS = {
  */
 export function RecorderPage() {
   const { workspaceId, recipeId } = useParams<{ workspaceId: string; recipeId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
@@ -61,9 +62,12 @@ export function RecorderPage() {
   const [markForm] = Form.useForm<{ category: VagueCategory; rawPhrase: string; assigneeId?: string }>();
   const [createdCount, setCreatedCount] = useState(0);
   const [playhead, setPlayhead] = useState(0);
+  const [openingAudio, setOpeningAudio] = useState(false);
   const playLocal = usePlayerStore((s) => s.play);
   // 本地试听用的 blob URL 必须显式释放，否则每次重录都会漏一份内存
   const objectUrlRef = useRef<string | null>(null);
+  // 从 ?audio=<id> 进来的已有语音只自动打开一次，避免重复触发转写
+  const openedAudioRef = useRef<string | null>(null);
 
   const revokeObjectUrl = () => {
     if (objectUrlRef.current) {
@@ -162,6 +166,48 @@ export function RecorderPage() {
   const suggestionMutation = useMutation({
     mutationFn: () => vagueItemApi.suggest(recipeId!, transcript),
   });
+
+  /**
+   * 打开一段已保存的语音继续整理（转写 / 框选 / 标记）。
+   *
+   * 两条来路：语音收件箱"归到食谱"后跳转会带 ?audio=<id>；
+   * 或者直接在下方语音列表点"整理"。没转写过的会顺手触发一次转写，
+   * 行为与刚录完上传时一致。
+   */
+  const openExisting = async (audioId: string) => {
+    setOpeningAudio(true);
+    try {
+      const loaded = await audioApi.get(audioId);
+      setAudio(loaded);
+      setTranscript(loaded.transcript ?? '');
+      setSelection(null);
+      setClip(null);
+      const canContribute = recipe.data?.myRole !== 'viewer';
+      if (loaded.transcriptStatus === 'none' && canContribute) {
+        const result = await audioApi.transcribe(loaded.id);
+        setAudio(result.audio);
+        setTranscript(result.audio.transcript ?? '');
+        if (result.needsManualInput) {
+          message.info('当前转写模式是"人工录入"，请在右侧把听到的内容打下来。');
+        } else {
+          message.success(`已用 ${result.provider} 自动转写，请核对后修改。`);
+        }
+        void queryClient.invalidateQueries({ queryKey: ['audio', recipeId] });
+      }
+    } catch (caught) {
+      message.error(errorMessage(caught));
+    } finally {
+      setOpeningAudio(false);
+    }
+  };
+
+  const openAudioParam = searchParams.get('audio');
+  useEffect(() => {
+    if (!openAudioParam || !recipe.data || openedAudioRef.current === openAudioParam) return;
+    openedAudioRef.current = openAudioParam;
+    void openExisting(openAudioParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAudioParam, recipe.data]);
 
   if (recipe.isLoading) return <Spin size="large" />;
 
@@ -277,7 +323,22 @@ export function RecorderPage() {
         <div className="froa-inbox-columns">
           {/* 左：原声 */}
           <div className="froa-card">
-            <h3 className="froa-card-title">原始语音</h3>
+            <div className="froa-row" style={{ justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <h3 className="froa-card-title" style={{ margin: 0 }}>
+                原始语音
+              </h3>
+              <Button
+                size="small"
+                onClick={() => {
+                  setAudio(null);
+                  setTranscript('');
+                  setSelection(null);
+                  setClip(null);
+                }}
+              >
+                再录一段新的
+              </Button>
+            </div>
             <div className="froa-item-meta" style={{ marginBottom: '0.5rem' }}>
               <Tag>{KIND_LABELS[audio.kind as keyof typeof KIND_LABELS] ?? audio.kind}</Tag>
               <span>时长 {formatMs(audio.durationMs)}</span>
@@ -347,6 +408,23 @@ export function RecorderPage() {
                     >
                       播放
                     </Button>,
+                    item.id !== audio.id ? (
+                      <Button
+                        key="open"
+                        type="link"
+                        loading={openingAudio && openedAudioRef.current === item.id}
+                        onClick={() => {
+                          openedAudioRef.current = item.id;
+                          void openExisting(item.id);
+                        }}
+                      >
+                        整理
+                      </Button>
+                    ) : (
+                      <Tag key="current" color="blue">
+                        正在整理
+                      </Tag>
+                    ),
                   ]}
                 >
                   <List.Item.Meta

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { App as AntApp, Button, Empty, Form, Input, Modal, Spin, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { App as AntApp, Button, Empty, Form, Input, Modal, Space, Spin, Typography } from 'antd';
+import { AudioOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RecipeDto } from '@froa/shared';
 import { recipeApi, workspaceApi } from '../../api/endpoints';
 import { errorMessage } from '../../api/client';
+import { VoiceInbox } from './VoiceInbox';
 
 /** 空间首页：食谱网格 + 每个食谱的"今天该干什么"待办角标 */
 export function WorkspaceHomePage() {
@@ -62,15 +63,30 @@ export function WorkspaceHomePage() {
             {workspace.data ? workspace.data.role : '—'}
           </div>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          disabled={isViewer}
-          onClick={() => setCreating(true)}
-        >
-          新建食谱
-        </Button>
+        <Space wrap>
+          <Button
+            icon={<AudioOutlined />}
+            onClick={() => navigate('/talk')}
+            title="在长辈的设备上打开这个页面：只有按住说话"
+          >
+            长辈极简录音页
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={isViewer}
+            onClick={() => setCreating(true)}
+          >
+            新建食谱
+          </Button>
+        </Space>
       </div>
+
+      <VoiceInbox
+        workspaceId={workspaceId!}
+        myRole={workspace.data?.role}
+        recipes={list.map((recipe) => ({ id: recipe.id, title: recipe.title }))}
+      />
 
       {list.length === 0 ? (
         <Empty

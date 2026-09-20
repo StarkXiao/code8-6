@@ -171,28 +171,47 @@ export const updateIngredientSchema = createIngredientSchema.partial().extend({
 
 export const audioKindSchema = z.enum(AUDIO_KINDS);
 
-export const uploadAudioFieldsSchema = z.object({
+/**
+ * 上传音频的表单字段。
+ *
+ * recipeId 与 workspaceId 至少给一个：
+ * - 给了 recipeId：语音直接挂在食谱下（整理者在录音工作台的用法）；
+ * - 只给 workspaceId：语音先进"语音收件箱"（长辈极简端的用法），
+ *   之后由整理者归到具体食谱。
+ */
+export const uploadAudioFieldsSchema = z
+  .object({
+    recipeId: idSchema.optional(),
+    workspaceId: idSchema.optional(),
+    kind: audioKindSchema,
+    durationMs: z.coerce.number().int().min(0).max(24 * 3600 * 1000),
+    peaks: z
+      .string()
+      .optional()
+      .transform((raw, ctx) => {
+        if (!raw) return null;
+        try {
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) throw new Error('not array');
+          const values = parsed
+            .map((n) => Number(n))
+            .filter((n) => Number.isFinite(n))
+            .map((n) => Math.min(1, Math.max(0, n)));
+          return values.length ? values : null;
+        } catch {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'peaks 必须是数字数组' });
+          return z.NEVER;
+        }
+      }),
+  })
+  .refine((v) => v.recipeId || v.workspaceId, {
+    message: '必须指定食谱（recipeId）或家庭空间（workspaceId）',
+    path: ['recipeId'],
+  });
+
+/** 把收件箱里的语音归到具体食谱（只能归到同一家庭空间内的食谱） */
+export const assignAudioSchema = z.object({
   recipeId: idSchema,
-  kind: audioKindSchema,
-  durationMs: z.coerce.number().int().min(0).max(24 * 3600 * 1000),
-  peaks: z
-    .string()
-    .optional()
-    .transform((raw, ctx) => {
-      if (!raw) return null;
-      try {
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) throw new Error('not array');
-        const values = parsed
-          .map((n) => Number(n))
-          .filter((n) => Number.isFinite(n))
-          .map((n) => Math.min(1, Math.max(0, n)));
-        return values.length ? values : null;
-      } catch {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'peaks 必须是数字数组' });
-        return z.NEVER;
-      }
-    }),
 });
 
 export const isAllowedAudioMime = (mime: string): boolean =>
@@ -341,8 +360,11 @@ export const vagueItemQuerySchema = z.object({
 
 export const audioQuerySchema = z.object({
   recipeId: idSchema.optional(),
+  workspaceId: idSchema.optional(),
   kind: z.enum(AUDIO_KINDS).optional(),
   transcriptStatus: z.enum(['none', 'pending', 'done', 'failed']).optional(),
+  /** true 时只列出"语音收件箱"里还没归到食谱的录音 */
+  unassigned: booleanQuerySchema,
   // 注意不能用 z.coerce.boolean()：它把字符串 "false" 也当成 true
   includeDeleted: booleanQuerySchema,
 });

@@ -264,5 +264,6 @@ function pageRoutes(data: Seeded): { path: string; expect: RegExp }[] {
       expect: /版本差异/,
     },
     { path: `/join/${data.inviteCode}`, expect: /全页面巡检厨房/ },
+    // /talk（长辈极简端）按角色渲染差异大，由 elder.spec.ts 单独覆盖
   ];
 }

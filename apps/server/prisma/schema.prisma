@@ -200,10 +200,15 @@ model Ingredient {
 // ------------------------------------------------------------------
 
 /// 音频只增不改不删（软删除），是全部结论的最终证据。
+///
+/// recipeId 可空：长辈极简端（/talk）按住说话直接上传，不选食谱，
+/// 语音先落在家庭空间的"语音收件箱"（recipeId 为 null），
+/// 之后由整理者归到具体食谱（POST /audio/:id/assign）再走整理流程。
 model AudioAttachment {
   id               String    @id
   workspaceId      String
-  recipeId         String
+  /// null = 还在语音收件箱里，未归到任何食谱
+  recipeId         String?
   ownerId          String
   kind             String
   storagePath      String
@@ -219,12 +224,13 @@ model AudioAttachment {
   createdAt        DateTime  @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  recipe    Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe    Recipe?   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   owner     User      @relation("AudioOwner", fields: [ownerId], references: [id])
   clips     AudioClip[]
 
   @@index([recipeId, kind])
   @@index([recipeId, transcriptStatus])
+  @@index([workspaceId, recipeId])
 }
 
 model AudioClip {

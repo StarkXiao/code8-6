@@ -947,3 +947,182 @@ describe('回归：登录接口有频次限制', () => {
     expect(limited).toBe(true);
   });
 });
+
+describe('回归：语音收件箱（长辈极简端）', () => {
+  // 场景：长辈在 /talk 按住说话直接上传，不选食谱；
+  // 整理者在收件箱里把它归到食谱，之后走正常整理流程。
+  let organizer: Session;
+  let elder: Session;
+  let outsider: Session;
+  let workspaceId = '';
+  let recipeId = '';
+  let inboxAudioId = '';
+
+  beforeAll(async () => {
+    organizer = await register('inbox-owner');
+    elder = await register('inbox-elder');
+    outsider = await register('inbox-outsider');
+
+    const ws = await request(app)
+      .post('/api/workspaces')
+      .set(auth(organizer))
+      .send({ name: '收件箱测试空间' })
+      .expect(201);
+    workspaceId = ws.body.data.id;
+
+    // 长辈以贡献者身份加入（默认角色）， outsider 不进空间
+    await request(app)
+      .post('/api/workspaces/join')
+      .set(auth(elder))
+      .send({ inviteCode: ws.body.data.inviteCode })
+      .expect(201);
+
+    const recipe = await request(app)
+      .post('/api/recipes')
+      .set(auth(organizer))
+      .send({ workspaceId, title: '外婆的红烧肉' })
+      .expect(201);
+    recipeId = recipe.body.data.id;
+  });
+
+  it('长辈只带 workspaceId 就能上传，语音先进收件箱（recipeId 为 null）', async () => {
+    const response = await request(app)
+      .post('/api/audio')
+      .set(auth(elder))
+      .field('workspaceId', workspaceId)
+      .field('kind', 'recipe_voice')
+      .field('durationMs', '1000')
+      .attach('file', fakeWav(), { filename: 'v.wav', contentType: 'audio/wav' })
+      .expect(201);
+
+    expect(response.body.data.recipeId).toBeNull();
+    expect(response.body.data.workspaceId).toBe(workspaceId);
+    inboxAudioId = response.body.data.id;
+  });
+
+  it('recipeId 与 workspaceId 都不给时必须拒绝', async () => {
+    await request(app)
+      .post('/api/audio')
+      .set(auth(elder))
+      .field('kind', 'recipe_voice')
+      .field('durationMs', '1000')
+      .attach('file', fakeWav(), { filename: 'v.wav', contentType: 'audio/wav' })
+      .expect(400);
+  });
+
+  it('收件箱语音不会出现在任何食谱的语音列表里', async () => {
+    const list = await request(app)
+      .get('/api/audio')
+      .query({ recipeId })
+      .set(auth(organizer))
+      .expect(200);
+    expect(list.body.data.map((a: { id: string }) => a.id)).not.toContain(inboxAudioId);
+  });
+
+  it('整理者能按空间列出收件箱语音，长辈自己的也在里面', async () => {
+    const list = await request(app)
+      .get('/api/audio')
+      .query({ workspaceId, unassigned: '1' })
+      .set(auth(organizer))
+      .expect(200);
+    expect(list.body.data.map((a: { id: string }) => a.id)).toContain(inboxAudioId);
+  });
+
+  it('收件箱语音在归到食谱之前就能被空间成员回放（详情 + 流）', async () => {
+    await request(app).get(`/api/audio/${inboxAudioId}`).set(auth(organizer)).expect(200);
+    await request(app).get(`/api/audio/${inboxAudioId}/stream`).set(auth(elder)).expect(200);
+  });
+
+  it('空间外的人：看不到收件箱、不能往这个空间上传、不能归食谱', async () => {
+    const list = await request(app)
+      .get('/api/audio')
+      .query({ workspaceId, unassigned: '1' })
+      .set(auth(outsider))
+      .expect(403);
+    expect(list.body.data).toBeUndefined();
+
+    await request(app)
+      .post('/api/audio')
+      .set(auth(outsider))
+      .field('workspaceId', workspaceId)
+      .field('kind', 'recipe_voice')
+      .field('durationMs', '1000')
+      .attach('file', fakeWav(), { filename: 'v.wav', contentType: 'audio/wav' })
+      .expect(403);
+
+    await request(app)
+      .post(`/api/audio/${inboxAudioId}/assign`)
+      .set(auth(outsider))
+      .send({ recipeId })
+      .expect(403);
+  });
+
+  it('贡献者（长辈账号）不能执行"归到食谱"——整理是整理者的工作', async () => {
+    await request(app)
+      .post(`/api/audio/${inboxAudioId}/assign`)
+      .set(auth(elder))
+      .send({ recipeId })
+      .expect(403);
+  });
+
+  it('不能归到别的家庭空间的食谱（跨空间写入）', async () => {
+    const otherWs = await request(app)
+      .post('/api/workspaces')
+      .set(auth(outsider))
+      .send({ name: '别人的空间' })
+      .expect(201);
+    const otherRecipe = await request(app)
+      .post('/api/recipes')
+      .set(auth(outsider))
+      .send({ workspaceId: otherWs.body.data.id, title: '别人的食谱' })
+      .expect(201);
+
+    // 整理者不是那个空间的成员：assertRecipeRole 直接 403
+    await request(app)
+      .post(`/api/audio/${inboxAudioId}/assign`)
+      .set(auth(organizer))
+      .send({ recipeId: otherRecipe.body.data.id })
+      .expect(403);
+
+    // 两个空间都属于同一个人时，也必须被"同一空间"校验拦下（400）
+    const myOtherWs = await request(app)
+      .post('/api/workspaces')
+      .set(auth(organizer))
+      .send({ name: '同一人的另一个空间' })
+      .expect(201);
+    const myOtherRecipe = await request(app)
+      .post('/api/recipes')
+      .set(auth(organizer))
+      .send({ workspaceId: myOtherWs.body.data.id, title: '另一空间的食谱' })
+      .expect(201);
+    const cross = await request(app)
+      .post(`/api/audio/${inboxAudioId}/assign`)
+      .set(auth(organizer))
+      .send({ recipeId: myOtherRecipe.body.data.id })
+      .expect(400);
+    expect(cross.body.error.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('整理者归到食谱后，语音出现在该食谱的列表里，收件箱里不再出现', async () => {
+    const assigned = await request(app)
+      .post(`/api/audio/${inboxAudioId}/assign`)
+      .set(auth(organizer))
+      .send({ recipeId })
+      .expect(200);
+    expect(assigned.body.data.recipeId).toBe(recipeId);
+
+    const recipeAudio = await request(app)
+      .get('/api/audio')
+      .query({ recipeId })
+      .set(auth(organizer))
+      .expect(200);
+    expect(recipeAudio.body.data.map((a: { id: string }) => a.id)).toContain(inboxAudioId);
+
+    const inbox = await request(app)
+      .get('/api/audio')
+      .query({ workspaceId, unassigned: '1' })
+      .set(auth(organizer))
+      .expect(200);
+    expect(inbox.body.data.map((a: { id: string }) => a.id)).not.toContain(inboxAudioId);
+  });
+});

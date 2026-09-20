@@ -150,20 +150,29 @@ export const versionApi = {
 /* ---------------- 音频 ---------------- */
 
 export const audioApi = {
-  list: (params: { recipeId?: string; kind?: string; transcriptStatus?: string }) =>
-    unwrap<AudioAttachmentDto[]>(api.get('/audio', { params })),
+  list: (params: {
+    recipeId?: string;
+    workspaceId?: string;
+    kind?: string;
+    transcriptStatus?: string;
+    /** true = 只看"语音收件箱"里还没归到食谱的录音 */
+    unassigned?: boolean;
+  }) => unwrap<AudioAttachmentDto[]>(api.get('/audio', { params })),
   get: (audioId: string) => unwrap<AudioAttachmentDto>(api.get(`/audio/${audioId}`)),
   upload: (input: {
     file: Blob;
     filename: string;
-    recipeId: string;
+    /** 二选一：挂到食谱下，或只给 workspaceId 先进语音收件箱 */
+    recipeId?: string;
+    workspaceId?: string;
     kind: string;
     durationMs: number;
     peaks: number[] | null;
   }) => {
     const form = new FormData();
     form.append('file', input.file, input.filename);
-    form.append('recipeId', input.recipeId);
+    if (input.recipeId) form.append('recipeId', input.recipeId);
+    if (input.workspaceId) form.append('workspaceId', input.workspaceId);
     form.append('kind', input.kind);
     form.append('durationMs', String(Math.round(input.durationMs)));
     if (input.peaks?.length) form.append('peaks', JSON.stringify(input.peaks));
@@ -171,6 +180,9 @@ export const audioApi = {
       api.post('/audio', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
     );
   },
+  /** 整理者把收件箱里的语音归到具体食谱 */
+  assign: (audioId: string, recipeId: string) =>
+    unwrap<AudioAttachmentDto>(api.post(`/audio/${audioId}/assign`, { recipeId })),
   transcribe: (audioId: string) =>
     unwrap<{
       audio: AudioAttachmentDto;

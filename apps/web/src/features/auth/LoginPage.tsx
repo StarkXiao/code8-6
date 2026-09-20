@@ -58,6 +58,11 @@ export function LoginPage() {
         <div style={{ marginTop: 16, textAlign: 'center' }}>
           还没有账号？<Link to="/register">注册一个</Link>
         </div>
+        <div style={{ marginTop: 8, textAlign: 'center' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            给长辈用？登录后打开 <Link to="/talk">极简录音页</Link>，只有"按住说话"。
+          </Typography.Text>
+        </div>
       </div>
     </div>
   );

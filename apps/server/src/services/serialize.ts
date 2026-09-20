@@ -183,7 +183,7 @@ export function toIngredientDto(ingredient: {
 export function toAudioDto(audio: {
   id: string;
   workspaceId: string;
-  recipeId: string;
+  recipeId: string | null;
   ownerId: string;
   kind: string;
   mimeType: string;

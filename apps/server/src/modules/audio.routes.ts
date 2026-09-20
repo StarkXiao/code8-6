@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { Router } from 'express';
 import {
+  assignAudioSchema,
   audioQuerySchema,
   createClipSchema,
   isAllowedAudioMime,
@@ -21,6 +22,7 @@ import {
   assertAudioRole,
   assertClipRole,
   assertRecipeRole,
+  assertWorkspaceRole,
   getMembership,
 } from '../services/access';
 import { logActivity } from '../services/activity';
@@ -39,6 +41,11 @@ audioRouter.use(requireAuth);
 
 /**
  * 上传音频。
+ *
+ * 两种落法：
+ * - 带 recipeId：直接挂在食谱下（整理者在录音工作台）；
+ * - 只带 workspaceId：进"语音收件箱"（长辈极简端按住说话），
+ *   之后由整理者用 POST /audio/:id/assign 归到具体食谱。
  *
  * 关键点：
  * - 波形峰值由浏览器端用 Web Audio API 预计算后随表单一起提交，
@@ -60,14 +67,19 @@ audioRouter.post(
   asyncHandler(async (req, res) => {
     if (!req.file) throw new ApiError('VALIDATION_FAILED', '缺少上传文件字段 file');
 
-    const { recipeId, kind, durationMs, peaks } = req.body as {
-      recipeId: string;
+    const { recipeId, workspaceId, kind, durationMs, peaks } = req.body as {
+      recipeId?: string;
+      workspaceId?: string;
       kind: string;
       durationMs: number;
       peaks: number[] | null;
     };
 
-    const access = await assertRecipeRole(req.auth!.userId, recipeId, 'contributor');
+    // 挂食谱需要食谱所在空间的贡献者权限；进收件箱只需要目标空间的贡献者权限。
+    // 两个分支拿到的 workspaceId 都以服务端鉴权结果为准，不信任客户端自报。
+    const access = recipeId
+      ? await assertRecipeRole(req.auth!.userId, recipeId, 'contributor')
+      : await assertWorkspaceRole(req.auth!.userId, workspaceId!, 'contributor');
     if (!isAllowedAudioMime(req.file.mimetype)) {
       throw new ApiError('UPLOAD_TYPE_NOT_ALLOWED', `不支持的音频格式：${req.file.mimetype}`);
     }
@@ -80,7 +92,7 @@ audioRouter.post(
       data: {
         id: audioId,
         workspaceId: access.workspaceId,
-        recipeId,
+        recipeId: recipeId ?? null,
         ownerId: req.auth!.userId,
         kind,
         storagePath: key,
@@ -99,11 +111,54 @@ audioRouter.post(
       action: 'audio.upload',
       entityType: 'audio_attachment',
       entityId: audio.id,
-      after: { kind, sizeBytes: audio.sizeBytes, durationMs },
+      after: { kind, sizeBytes: audio.sizeBytes, durationMs, inbox: !recipeId },
     });
 
-    emitToWorkspace(access.workspaceId, 'audio:created', { recipeId, audioId: audio.id, kind });
+    emitToWorkspace(access.workspaceId, 'audio:created', { recipeId: recipeId ?? null, audioId: audio.id, kind });
     created(res, toAudioDto(audio));
+  }),
+);
+
+/**
+ * 把收件箱里的语音归到具体食谱 —— 这是整理工作，要求整理者（editor）及以上。
+ *
+ * 目标食谱必须与音频在同一个家庭空间：否则一次请求就能把语音"搬"到
+ * 别人家里，等于跨空间写入。
+ */
+audioRouter.post(
+  '/audio/:audioId/assign',
+  validateBody(assignAudioSchema),
+  asyncHandler(async (req, res) => {
+    const { audioId } = req.params;
+    const { recipeId } = req.body as { recipeId: string };
+
+    const audio = await prisma.audioAttachment.findUnique({ where: { id: audioId! } });
+    if (!audio) throw new ApiError('AUDIO_NOT_FOUND');
+
+    // 音频所在空间的整理者权限 + 目标食谱的访问校验（同一空间才会通过）
+    await assertWorkspaceRole(req.auth!.userId, audio.workspaceId, 'editor');
+    const target = await assertRecipeRole(req.auth!.userId, recipeId, 'viewer');
+    if (target.workspaceId !== audio.workspaceId) {
+      throw new ApiError('VALIDATION_FAILED', '只能归到同一个家庭空间里的食谱');
+    }
+
+    const updated = await prisma.audioAttachment.update({
+      where: { id: audio.id },
+      data: { recipeId },
+    });
+
+    await logActivity({
+      workspaceId: audio.workspaceId,
+      actorId: req.auth!.userId,
+      action: 'audio.assign',
+      entityType: 'audio_attachment',
+      entityId: audio.id,
+      before: { recipeId: audio.recipeId },
+      after: { recipeId },
+    });
+
+    emitToWorkspace(audio.workspaceId, 'audio:created', { recipeId, audioId: audio.id, kind: audio.kind });
+    send(res, toAudioDto(updated));
   }),
 );
 
@@ -117,13 +172,19 @@ audioRouter.get(
   asyncHandler(async (req, res) => {
     // 一定要用校验后的值：includeDeleted 在 query string 里是字符串，
     // 直接读 req.query 会把 "false" 当成真值
-    const { recipeId, kind, transcriptStatus, includeDeleted } = queryOf(req, audioQuerySchema);
+    const { recipeId, workspaceId, kind, transcriptStatus, unassigned, includeDeleted } = queryOf(
+      req,
+      audioQuerySchema,
+    );
 
     // 没指定食谱时，必须把范围限制在"我参与的空间"内。
     // 否则同一条接口会把所有家庭的音频都吐出来（跨空间泄漏）。
     let scopedWorkspaceIds: string[] | null = null;
     if (recipeId) {
       await assertRecipeRole(req.auth!.userId, recipeId, 'viewer');
+    } else if (workspaceId) {
+      await assertWorkspaceRole(req.auth!.userId, workspaceId, 'viewer');
+      scopedWorkspaceIds = [workspaceId];
     } else {
       const memberships = await prisma.workspaceMember.findMany({
         where: { userId: req.auth!.userId },
@@ -140,7 +201,9 @@ audioRouter.get(
       where: {
         ...(recipeId
           ? { recipeId }
-          : { workspaceId: { in: scopedWorkspaceIds ?? [] } }),
+          : unassigned
+            ? { recipeId: null, workspaceId: { in: scopedWorkspaceIds ?? [] } }
+            : { workspaceId: { in: scopedWorkspaceIds ?? [] } }),
         ...(kind ? { kind } : {}),
         ...(transcriptStatus ? { transcriptStatus } : {}),
         ...(includeDeleted ? {} : { deletedAt: null }),

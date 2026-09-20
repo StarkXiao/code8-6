@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
  *  - 用独立端口 4100，不会和本机其它项目的 5173/4000 撞车。
  *
  * 浏览器：默认用系统已安装的 Google Chrome。
- * 若机器上没有 Chrome：先跑 npx playwright install chromium，再删掉下面的 channel: 'chrome'。
+ * 若机器上没有 Chrome：先跑 npx playwright install chromium，再删掉下面的 channel（或设 FROA_E2E_CHANNEL=''）。
  *
  * 运行：npm run test:e2e
  */
@@ -29,7 +29,7 @@ export default defineConfig({
       args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
     },
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel: 'chrome' } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel: process.env.FROA_E2E_CHANNEL === '' ? undefined : (process.env.FROA_E2E_CHANNEL ?? 'chrome') } }],
   webServer: [
     {
       command: 'npm run build && npm run db:migrate && npm --workspace @froa/server run start',

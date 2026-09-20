@@ -20,6 +20,7 @@ import { DiffPage } from './features/versions/DiffPage';
 import { VerifyPage } from './features/verification/VerifyPage';
 import { NotificationsPage } from './features/notification/NotificationsPage';
 import { ActivityPage } from './features/activity/ActivityPage';
+import { TalkPage } from './features/elder/TalkPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -60,6 +61,16 @@ export function App() {
           element={
             <RequireAuth>
               <JoinPage />
+            </RequireAuth>
+          }
+        />
+
+        {/* 长辈极简端：独立全屏页，不套任何导航 */}
+        <Route
+          path="/talk"
+          element={
+            <RequireAuth>
+              <TalkPage />
             </RequireAuth>
           }
         />

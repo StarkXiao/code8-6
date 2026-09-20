@@ -82,7 +82,8 @@ export async function buildCounters(recipeIds: string[]): Promise<Map<string, Re
   }
 
   for (const group of transcriptGroups) {
-    const counters = result.get(group.recipeId);
+    // where 条件限定了 recipeId ∈ recipeIds，收件箱语音（recipeId 为 null）不会出现在这里
+    const counters = result.get(group.recipeId!);
     if (!counters) continue;
     counters.audioCount += group._count._all;
     if (group.transcriptStatus === 'none' || group.transcriptStatus === 'pending') {
